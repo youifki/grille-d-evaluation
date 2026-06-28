@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>شبكة التقييم المواطن — الجماعات الترابية المغربية</title>
+  <meta name="description" content="أداة تقييم مواطني تفاعلية لقياس أداء مجالس الجماعات الترابية بالمغرب">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --primary:#C1121C; --primary-d:#9b0e17; --green:#006233; --dark:#1a252f;
+  --text:#2c3e50; --muted:#7f8c8d; --bg:#f2f5f9; --card:#ffffff; --border:#e1e8ed;
+  --shadow-s:0 2px 8px rgba(0,0,0,.07); --shadow-m:0 4px 24px rgba(0,0,0,.10);
+  --shadow-l:0 8px 40px rgba(0,0,0,.13); --r:14px; --r-lg:22px; --t:.25s ease;
+  --font:'Cairo','Segoe UI',Tahoma,Arial,sans-serif;
+}
+html { font-size:16px; scroll-behavior:smooth; }
+body { font-family:var(--font); color:var(--text); background:var(--bg); line-height:1.65; min-height:100vh; }
+img,svg { display:block; }
+button { cursor:pointer; font-family:var(--font); }
+input,textarea,select { font-family:var(--font); }
+textarea { resize:vertical; }
+a { color:var(--primary); text-decoration:none; }
+.container { max-width:1100px; margin:0 auto; padding:0 20px; }
+
+/* Header */
+.app-header { background:linear-gradient(135deg,var(--dark) 0%,#2c3e50 100%); box-shadow:var(--shadow-m); position:sticky; top:0; z-index:100; }
+.header-inner { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; max-width:1100px; margin:0 auto; }
+.logo { display:flex; align-items:center; gap:12px; }
+.logo-flag { font-size:2rem; }
+.logo-text h1 { font-size:1.05rem; font-weight:700; color:#fff; line-height:1.2; }
+.logo-text p { font-size:.75rem; color:rgba(255,255,255,.6); }
+.header-score { display:none; align-items:center; gap:6px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); border-radius:50px; padding:6px 18px; color:#fff; }
+.header-score .score-lbl { font-size:.75rem; opacity:.8; }
+.header-score .score-num { font-size:1.3rem; font-weight:900; color:#f9ca24; }
+.header-score .score-max { font-size:.8rem; opacity:.7; }
+
+/* Progress */
+.progress-container { display:none; background:#fff; border-bottom:1px solid var(--border); }
+.progress-track { height:4px; background:var(--border); }
+.progress-fill { height:4px; background:var(--primary); transition:width .4s ease; width:0%; }
+.progress-steps { display:flex; justify-content:space-between; align-items:center; padding:10px 24px; max-width:1100px; margin:0 auto; gap:4px; }
+.progress-step { width:32px; height:32px; border-radius:50%; background:var(--border); color:var(--muted); font-size:.8rem; font-weight:700; display:flex; align-items:center; justify-content:center; transition:var(--t); cursor:pointer; flex-shrink:0; }
+.progress-step.active { background:var(--primary); color:#fff; transform:scale(1.15); }
+.progress-step.completed { background:#27ae60; color:#fff; }
+.progress-step:hover { opacity:.85; }
+
+/* Screens */
+.screen { display:none; }
+.screen.active { display:block; }
+.main-content { padding:32px 0 64px; }
+
+/* Hero */
+.hero { background:linear-gradient(135deg,var(--green) 0%,#004d28 55%,var(--dark) 100%); border-radius:var(--r-lg); padding:56px 40px; text-align:center; margin-bottom:32px; position:relative; overflow:hidden; }
+.hero-badge { display:inline-block; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.3); color:#fff; font-size:.8rem; padding:4px 16px; border-radius:50px; margin-bottom:20px; letter-spacing:.05em; }
+.hero h2 { font-size:2.2rem; font-weight:900; color:#fff; line-height:1.3; margin-bottom:16px; }
+.hero p { font-size:1.05rem; color:rgba(255,255,255,.8); max-width:600px; margin:0 auto 32px; }
+.hero-stats { display:flex; justify-content:center; gap:40px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); border-radius:var(--r); padding:20px 40px; width:fit-content; margin:0 auto; }
+.stat { text-align:center; }
+.stat-num { display:block; font-size:2.2rem; font-weight:900; color:#f9ca24; line-height:1; }
+.stat-lbl { font-size:.8rem; color:rgba(255,255,255,.7); margin-top:4px; }
+
+/* Setup card */
+.setup-card { background:var(--card); border-radius:var(--r-lg); padding:36px; box-shadow:var(--shadow-m); margin-bottom:32px; }
+.setup-card h3 { font-size:1.2rem; font-weight:700; margin-bottom:24px; color:var(--dark); border-bottom:2px solid var(--border); padding-bottom:12px; }
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:28px; }
+.form-group { display:flex; flex-direction:column; gap:6px; }
+.form-group label { font-size:.9rem; font-weight:600; color:var(--text); }
+.form-group input { padding:12px 16px; border:2px solid var(--border); border-radius:var(--r); font-size:.95rem; font-family:var(--font); color:var(--text); transition:var(--t); background:#fff; }
+.form-group input:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(193,18,28,.1); }
+.form-group input.error { border-color:var(--primary); animation:shake .3s ease; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+
+/* How it works */
+.how-it-works { margin-top:8px; }
+.how-it-works h3 { text-align:center; font-size:1.15rem; font-weight:700; color:var(--dark); margin-bottom:24px; }
+.steps-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+.step { background:var(--card); border-radius:var(--r); padding:24px 16px; text-align:center; box-shadow:var(--shadow-s); transition:var(--t); }
+.step:hover { transform:translateY(-3px); box-shadow:var(--shadow-m); }
+.step-icon { font-size:2rem; margin-bottom:12px; }
+.step h4 { font-size:.95rem; font-weight:700; color:var(--dark); margin-bottom:6px; }
+.step p { font-size:.82rem; color:var(--muted); }
+
+/* Buttons */
+.btn-primary { display:inline-flex; align-items:center; gap:10px; justify-content:center; background:var(--primary); color:#fff; border:none; border-radius:var(--r); font-size:1rem; font-weight:700; padding:14px 32px; transition:var(--t); }
+.btn-primary:hover { background:var(--primary-d); transform:translateY(-1px); box-shadow:var(--shadow-m); }
+.btn-primary:active { transform:translateY(0); }
+.btn-primary.lg { font-size:1.1rem; padding:16px 48px; width:100%; }
+.btn-secondary { display:inline-flex; align-items:center; gap:8px; background:#fff; color:var(--text); border:2px solid var(--border); border-radius:var(--r); font-size:.95rem; font-weight:600; padding:12px 24px; transition:var(--t); }
+.btn-secondary:hover { border-color:var(--text); background:var(--bg); }
+.btn-outline { display:inline-flex; align-items:center; gap:8px; background:transparent; color:var(--primary); border:2px solid var(--primary); border-radius:var(--r); font-size:.95rem; font-weight:600; padding:12px 24px; transition:var(--t); }
+.btn-outline:hover { background:var(--primary); color:#fff; }
+.btn-arrow { font-size:1.1rem; }
+
+/* Evaluation */
+.eval-layout { display:grid; grid-template-columns:1fr 280px; gap:24px; align-items:start; }
+.axis-card { background:var(--card); border-radius:var(--r-lg); box-shadow:var(--shadow-m); overflow:hidden; border-top:5px solid var(--axis-color,var(--primary)); }
+.axis-header { padding:28px 32px 24px; border-bottom:1px solid var(--border); }
+.axis-meta { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.axis-number { font-size:.8rem; color:var(--muted); font-weight:600; }
+.axis-pts-badge { background:var(--axis-color); color:#fff; font-size:.78rem; font-weight:700; padding:3px 12px; border-radius:50px; }
+.axis-icon { font-size:2.4rem; margin-bottom:8px; }
+.axis-title { font-size:1.4rem; font-weight:900; color:var(--dark); margin-bottom:4px; }
+.axis-subtitle { font-size:.85rem; color:var(--muted); font-style:italic; }
+.indicators-list { padding:0 32px; }
+.indicator-item { padding:20px 0; border-bottom:1px solid var(--border); }
+.indicator-item:last-child { border-bottom:none; }
+.ind-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+.ind-num { width:26px; height:26px; background:var(--bg); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.78rem; font-weight:700; color:var(--muted); flex-shrink:0; }
+.ind-name { font-size:.95rem; font-weight:600; color:var(--text); flex:1; }
+.ind-badge { font-size:.72rem; font-weight:700; padding:3px 10px; border-radius:50px; background:var(--border); color:var(--muted); white-space:nowrap; transition:var(--t); }
+.ind-badge.rated { color:#fff; }
+.rating-row { display:flex; gap:8px; flex-wrap:wrap; }
+.rbtn { display:flex; flex-direction:column; align-items:center; gap:3px; padding:8px 12px; border-radius:10px; border:2px solid var(--c); background:#fff; color:var(--c); min-width:56px; transition:var(--t); flex-shrink:0; }
+.rbtn:hover { background:var(--c); color:#fff; transform:translateY(-2px); }
+.rbtn.sel { background:var(--c); color:#fff; box-shadow:0 3px 10px rgba(0,0,0,.2); }
+.rbtn-val { font-size:1.1rem; font-weight:900; line-height:1; }
+.rbtn-lbl { font-size:.65rem; font-weight:600; white-space:nowrap; }
+.axis-notes-wrap { padding:20px 32px; border-top:1px solid var(--border); }
+.axis-notes-wrap label { font-size:.85rem; font-weight:600; color:var(--muted); display:block; margin-bottom:8px; }
+.axis-notes-wrap textarea { width:100%; border:1px solid var(--border); border-radius:var(--r); padding:10px 14px; font-size:.9rem; color:var(--text); background:var(--bg); }
+.axis-notes-wrap textarea:focus { outline:none; border-color:var(--primary); background:#fff; }
+.axis-score-bar { padding:16px 32px; background:var(--bg); display:flex; align-items:center; gap:8px; font-size:.9rem; font-weight:600; }
+.axis-score-bar strong { font-size:1.2rem; font-weight:900; color:var(--axis-color); }
+.axis-score-fill-wrap { flex:1; height:8px; background:var(--border); border-radius:99px; overflow:hidden; margin-right:auto; }
+.axis-score-fill { height:100%; border-radius:99px; transition:width .4s ease; }
+
+/* Sidebar */
+.sidebar-score-card { background:var(--card); border-radius:var(--r-lg); padding:24px; box-shadow:var(--shadow-m); text-align:center; margin-bottom:16px; position:sticky; top:80px; }
+.sidebar-score-card h4 { font-size:.85rem; font-weight:700; color:var(--muted); margin-bottom:16px; }
+.score-circle-wrap { position:relative; width:130px; height:130px; margin:0 auto 12px; }
+.score-circle-wrap svg { width:100%; height:100%; }
+.score-circle-text { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.score-circle-text .big { font-size:1.6rem; font-weight:900; color:var(--dark); line-height:1; }
+.score-circle-text .sm { font-size:.8rem; color:var(--muted); }
+.axes-sidebar { background:var(--card); border-radius:var(--r-lg); box-shadow:var(--shadow-s); padding:16px; }
+.axes-sidebar h4 { font-size:.85rem; font-weight:700; color:var(--muted); margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+.mini-axis { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:var(--r); font-size:.8rem; cursor:pointer; transition:var(--t); margin-bottom:4px; color:var(--muted); }
+.mini-axis:hover { background:var(--bg); }
+.mini-axis.current { background:rgba(193,18,28,.07); color:var(--primary); font-weight:700; }
+.mini-axis.partial { color:var(--text); }
+.mini-axis.done { color:#27ae60; }
+.mini-icon { font-size:1rem; flex-shrink:0; }
+.mini-title { flex:1; font-size:.75rem; }
+.mini-score { font-weight:700; font-size:.75rem; white-space:nowrap; }
+.eval-nav { display:flex; justify-content:space-between; align-items:center; padding:20px 0; }
+
+/* Qualitative */
+.qualitative-wrap { max-width:800px; margin:0 auto; }
+.screen-hero { text-align:center; margin-bottom:32px; }
+.screen-hero .shero-icon { font-size:3rem; margin-bottom:12px; }
+.screen-hero h2 { font-size:1.6rem; font-weight:900; color:var(--dark); }
+.screen-hero p { color:var(--muted); margin-top:6px; }
+.q-item { background:var(--card); border-radius:var(--r); padding:24px; box-shadow:var(--shadow-s); margin-bottom:16px; }
+.q-item label { display:flex; align-items:flex-start; gap:12px; margin-bottom:12px; font-size:.95rem; font-weight:600; color:var(--dark); }
+.q-num { min-width:28px; height:28px; background:var(--primary); color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.8rem; font-weight:900; flex-shrink:0; margin-top:1px; }
+.q-item textarea { width:100%; border:1px solid var(--border); border-radius:var(--r); padding:12px 16px; font-size:.9rem; color:var(--text); background:var(--bg); }
+.q-item textarea:focus { outline:none; border-color:var(--primary); background:#fff; }
+.qual-nav { display:flex; justify-content:space-between; margin-top:24px; }
+
+/* Results */
+.results-top { text-align:center; margin-bottom:24px; }
+.results-commune { font-size:1.8rem; font-weight:900; color:var(--dark); }
+.results-evaluator { font-size:.95rem; color:var(--muted); margin-top:4px; }
+.results-date { font-size:.85rem; color:var(--muted); margin-top:4px; }
+.total-card { display:flex; align-items:center; gap:32px; border:3px solid; border-radius:var(--r-lg); padding:32px 40px; margin-bottom:28px; box-shadow:var(--shadow-m); }
+.total-left { display:flex; align-items:baseline; gap:4px; }
+.total-num { font-size:5rem; font-weight:900; line-height:1; }
+.total-denom { font-size:1.4rem; color:var(--muted); font-weight:700; }
+.verdict-label { font-size:1.5rem; font-weight:900; margin-bottom:6px; }
+.verdict-desc { font-size:1rem; color:var(--text); margin-bottom:8px; }
+.verdict-range { font-size:.82rem; color:var(--muted); }
+.charts-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px; }
+.chart-card { background:var(--card); border-radius:var(--r); padding:24px; box-shadow:var(--shadow-s); }
+.chart-card h4 { font-size:.95rem; font-weight:700; color:var(--dark); margin-bottom:16px; text-align:center; }
+.chart-wrap { position:relative; height:280px; }
+.chart-wrap canvas { max-height:280px; }
+.breakdown-card { background:var(--card); border-radius:var(--r); padding:24px; box-shadow:var(--shadow-s); margin-bottom:24px; }
+.breakdown-card h4 { font-size:.95rem; font-weight:700; color:var(--dark); margin-bottom:16px; }
+.bd-table { border-radius:var(--r); overflow:hidden; border:1px solid var(--border); }
+.bd-row { display:grid; grid-template-columns:2fr .6fr .5fr 1.2fr .6fr; align-items:center; padding:11px 16px; gap:8px; border-bottom:1px solid var(--border); font-size:.87rem; }
+.bd-row:last-child { border-bottom:none; }
+.bd-head { background:var(--bg); font-weight:700; color:var(--muted); font-size:.78rem; }
+.bd-total { background:var(--bg); font-weight:700; font-size:.9rem; }
+.bd-name { font-weight:600; }
+.bd-score { font-weight:700; text-align:center; }
+.bd-max { color:var(--muted); text-align:center; }
+.bd-pct { display:flex; align-items:center; gap:8px; font-size:.82rem; }
+.pct-track { flex:1; height:6px; background:var(--border); border-radius:99px; overflow:hidden; }
+.pct-bar { height:100%; border-radius:99px; transition:width .4s ease; }
+.bd-verdict { font-weight:700; font-size:.82rem; text-align:center; }
+.scale-ref { background:var(--card); border-radius:var(--r); padding:24px; box-shadow:var(--shadow-s); margin-bottom:24px; }
+.scale-ref h4 { font-size:.95rem; font-weight:700; color:var(--dark); margin-bottom:16px; }
+.scale-items { display:flex; flex-direction:column; gap:10px; }
+.scale-item { display:flex; align-items:center; gap:14px; border:2px solid; border-radius:var(--r); padding:14px 20px; transition:var(--t); }
+.scale-item.active { box-shadow:var(--shadow-m); transform:scale(1.01); }
+.scale-badge { color:#fff; font-size:.8rem; font-weight:700; padding:4px 14px; border-radius:50px; white-space:nowrap; }
+.scale-item strong { font-size:1rem; white-space:nowrap; }
+.scale-item p { font-size:.85rem; color:var(--text); }
+.qualitative-results { background:var(--card); border-radius:var(--r); padding:24px; box-shadow:var(--shadow-s); margin-bottom:24px; }
+.qualitative-results h4 { font-size:.95rem; font-weight:700; color:var(--dark); margin-bottom:16px; }
+.qa-item { border-bottom:1px solid var(--border); padding:16px 0; }
+.qa-item:last-child { border-bottom:none; padding-bottom:0; }
+.qa-q { font-size:.9rem; font-weight:700; color:var(--primary); margin-bottom:8px; }
+.qa-a { font-size:.9rem; color:var(--text); line-height:1.7; white-space:pre-line; }
+.results-actions { display:flex; gap:12px; justify-content:center; margin-top:32px; flex-wrap:wrap; }
+.app-footer { background:var(--dark); color:rgba(255,255,255,.5); text-align:center; padding:20px; font-size:.8rem; }
+
+@media print {
+  .app-header,.progress-container,.eval-nav,.results-actions,.app-footer,
+  #screen-welcome,#screen-evaluation,#screen-qualitative { display:none !important; }
+  #screen-results { display:block !important; }
+  body,.main-content { padding:0; background:#fff; }
+  .container { max-width:100%; padding:0 16px; }
+  .total-card,.charts-row,.breakdown-card { break-inside:avoid; }
+  .chart-wrap { height:220px; }
+  @page { margin:15mm; size:A4; }
+}
+@media (max-width:900px) {
+  .eval-layout { grid-template-columns:1fr; }
+  .sidebar-score-card,.axes-sidebar { display:none; }
+  .charts-row { grid-template-columns:1fr; }
+  .steps-grid { grid-template-columns:1fr 1fr; }
+  .hero-stats { gap:24px; padding:16px 24px; }
+}
+@media (max-width:640px) {
+  .hero { padding:36px 20px; }
+  .hero h2 { font-size:1.6rem; }
+  .form-grid { grid-template-columns:1fr; }
+  .setup-card { padding:24px 20px; }
+  .axis-header,.indicators-list,.axis-notes-wrap,.axis-score-bar { padding-right:16px; padding-left:16px; }
+  .rating-row { gap:6px; }
+  .rbtn { min-width:46px; padding:6px 8px; }
+  .rbtn-lbl { display:none; }
+  .total-card { flex-direction:column; text-align:center; padding:24px; gap:16px; }
+  .total-num { font-size:3.5rem; }
+  .bd-row { grid-template-columns:2fr .5fr .5fr; font-size:.78rem; }
+  .bd-pct,.bd-verdict { display:none; }
+  .steps-grid { grid-template-columns:1fr; }
+  .hero-stats { flex-direction:column; gap:12px; }
+  .progress-steps { padding:8px 12px; }
+  .progress-step { width:26px; height:26px; font-size:.7rem; }
+}
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-inner">
+    <div class="logo">
+      <span class="logo-flag">🇲🇦</span>
+      <div class="logo-text">
+        <h1>شبكة التقييم المواطن</h1>
+        <p>الجماعات الترابية بالمغرب</p>
+      </div>
+    </div>
+    <div id="header-score" class="header-score">
+      <span class="score-lbl">النقطة الحالية</span>
+      <span class="score-num" id="live-score">0</span>
+      <span class="score-max">/100</span>
+    </div>
+  </div>
+</header>
+
+<div id="progress-container" class="progress-container">
+  <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+  <div class="progress-steps" id="progress-steps"></div>
+</div>
+
+<main class="main-content">
+
+  <!-- Welcome -->
+  <div id="screen-welcome" class="screen active">
+    <div class="container">
+      <div class="hero">
+        <div class="hero-badge">المملكة المغربية — التقييم المواطني</div>
+        <h2>شبكة التقييم المواطن<br>لعمل الجماعات الترابية</h2>
+        <p>أداة ديمقراطية لتقييم أداء المجالس الجماعية وقياس مدى تحقيقها لالتزاماتها تجاه الساكنة، وفق مبادئ الشفافية وربط المسؤولية بالمحاسبة</p>
+        <div class="hero-stats">
+          <div class="stat"><span class="stat-num">9</span><span class="stat-lbl">محاور تقييم</span></div>
+          <div class="stat"><span class="stat-num">100</span><span class="stat-lbl">نقطة إجمالية</span></div>
+          <div class="stat"><span class="stat-num">37</span><span class="stat-lbl">مؤشراً</span></div>
+        </div>
+      </div>
+      <div class="setup-card">
+        <h3>معلومات الجماعة الترابية</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="commune-name">اسم الجماعة الترابية *</label>
+            <input type="text" id="commune-name" placeholder="مثال: جماعة الوليدية" onkeydown="if(event.key==='Enter') startEvaluation()">
+          </div>
+          <div class="form-group">
+            <label for="evaluator-name">الجهة المقيِّمة</label>
+            <input type="text" id="evaluator-name" placeholder="اسم الجمعية أو الهيئة أو الفرد">
+          </div>
+          <div class="form-group">
+            <label for="period-start">سنة بداية الولاية</label>
+            <input type="month" id="period-start" placeholder="2021-09">
+          </div>
+          <div class="form-group">
+            <label for="eval-date">تاريخ التقييم</label>
+            <input type="date" id="eval-date">
+          </div>
+        </div>
+        <button class="btn-primary lg" onclick="startEvaluation()">بدء التقييم <span class="btn-arrow">←</span></button>
+      </div>
+      <div class="how-it-works">
+        <h3>كيف يعمل التطبيق؟</h3>
+        <div class="steps-grid">
+          <div class="step"><div class="step-icon">📝</div><h4>أدخل البيانات</h4><p>اسم الجماعة والجهة المقيِّمة وفترة التقييم</p></div>
+          <div class="step"><div class="step-icon">⭐</div><h4>قيّم المؤشرات</h4><p>37 مؤشراً موزعاً على 9 محاور، من 0 إلى 5 لكل مؤشر</p></div>
+          <div class="step"><div class="step-icon">📊</div><h4>اطلع على النتائج</h4><p>تحليل بياني تفاعلي وتقدير شامل فوري</p></div>
+          <div class="step"><div class="step-icon">📄</div><h4>أصدر التقرير</h4><p>تقرير مواطن قابل للطباعة والنشر والمشاركة</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Evaluation -->
+  <div id="screen-evaluation" class="screen">
+    <div class="container">
+      <div class="eval-layout">
+        <div>
+          <div id="axis-form"></div>
+          <div class="eval-nav">
+            <button id="prev-btn" class="btn-secondary" onclick="prevAxis()" style="display:none"><span class="btn-arrow">→</span> السابق</button>
+            <button id="next-btn" class="btn-primary" onclick="nextAxis()">التالي <span class="btn-arrow">←</span></button>
+          </div>
+        </div>
+        <div>
+          <div class="sidebar-score-card">
+            <h4>النقطة الإجمالية</h4>
+            <div class="score-circle-wrap">
+              <svg viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="50" fill="none" stroke="#e1e8ed" stroke-width="10"/>
+                <circle cx="60" cy="60" r="50" fill="none" stroke="#C1121C" stroke-width="10"
+                        stroke-dasharray="314.16" stroke-dashoffset="314.16" id="score-circle"
+                        stroke-linecap="round" transform="rotate(-90 60 60)"
+                        style="transition:stroke-dashoffset .4s ease,stroke .3s ease"/>
+              </svg>
+              <div class="score-circle-text">
+                <span class="big" id="sidebar-score">0</span>
+                <span class="sm">/100</span>
+              </div>
+            </div>
+          </div>
+          <div class="axes-sidebar">
+            <h4>تقدم المحاور</h4>
+            <div id="axes-mini-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Qualitative -->
+  <div id="screen-qualitative" class="screen">
+    <div class="container">
+      <div class="qualitative-wrap">
+        <div class="screen-hero">
+          <div class="shero-icon">💬</div>
+          <h2>أسئلة نوعية</h2>
+          <p>أجب على الأسئلة التالية بناءً على معطيات موضوعية وملموسة (اختياري)</p>
+        </div>
+        <div id="qualitative-form"></div>
+        <div class="qual-nav">
+          <button class="btn-secondary" onclick="showScreen('evaluation');renderAxis(state.currentAxis)"><span class="btn-arrow">→</span> العودة</button>
+          <button class="btn-primary" onclick="showResults()">عرض النتائج <span class="btn-arrow">←</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="screen-results" class="screen">
+    <div class="container">
+      <div id="results-content"></div>
+      <div class="results-actions">
+        <button class="btn-primary" onclick="window.print()">🖨️ طباعة التقرير</button>
+        <button class="btn-outline" onclick="resetApp()">🔄 تقييم جديد</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer class="app-footer">
+  <p>شبكة التقييم المواطن للجماعات الترابية المغربية — أداة مفتوحة للمجتمع المدني والهيئات الاستشارية</p>
+</footer>
+
+<script>
+// ── Data ─────────────────────────────────────────────────────────────────────
+const AXES = [
+  { id:1, icon:"⚖️", color:"#3498db", title:"الحكامة والشفافية", titleFr:"Gouvernance et transparence", maxPoints:10,
+    indicators:["انتظام دورات المجلس","نشر القرارات والميزانيات","التواصل مع المواطنين","إشراك المجتمع المدني","احترام أخلاقيات المرفق العام"] },
+  { id:2, icon:"📋", color:"#2ecc71", title:"تنفيذ برنامج عمل الجماعة", titleFr:"Exécution du programme d'action", maxPoints:15,
+    indicators:["مدى إنجاز المشاريع المبرمجة","احترام الآجال","معالجة المشاريع المتعثرة","تحقيق الأهداف المعلنة"] },
+  { id:3, icon:"💰", color:"#f39c12", title:"التدبير المالي والجبائي", titleFr:"Gestion financière et fiscale", maxPoints:10,
+    indicators:["تعبئة الموارد المالية","ترشيد النفقات","وضوح الصفقات","حجم الاستثمار المحلي"] },
+  { id:4, icon:"🏗️", color:"#9b59b6", title:"البنية التحتية والتجهيزات", titleFr:"Infrastructure et équipements", maxPoints:15,
+    indicators:["جودة الطرق والأرصفة","الإنارة العمومية","شبكات الماء والتطهير","المرافق والأسواق والمقابر"] },
+  { id:5, icon:"🌿", color:"#27ae60", title:"النظافة وحماية البيئة", titleFr:"Propreté et protection de l'environnement", maxPoints:10,
+    indicators:["جمع النفايات","نظافة الأحياء والشاطئ","حماية البحيرة والفضاءات الطبيعية","المساحات الخضراء"] },
+  { id:6, icon:"🏙️", color:"#e67e22", title:"التعمير وتنظيم المجال", titleFr:"Urbanisme et organisation territoriale", maxPoints:10,
+    indicators:["تدبير الرخص","محاربة البناء العشوائي","احترام جمالية المدينة","معالجة مشاكل التجزئات"] },
+  { id:7, icon:"📈", color:"#e74c3c", title:"التنمية الاقتصادية والسياحية", titleFr:"Développement économique et touristique", maxPoints:10,
+    indicators:["تحسين جاذبية المدينة","تنظيم الأنشطة السياحية","دعم التجارة المحلية والمهن التقليدية","تشجيع الاستثمار"] },
+  { id:8, icon:"🤝", color:"#1abc9c", title:"الخدمات الاجتماعية والثقافية والرياضية", titleFr:"Services sociaux, culturels et sportifs", maxPoints:10,
+    indicators:["دعم الجمعيات","الأنشطة الثقافية والرياضية","فضاءات الشباب","العناية بالفئات الهشة"] },
+  { id:9, icon:"👥", color:"#2980b9", title:"جودة العلاقة مع الساكنة", titleFr:"Qualité de la relation avec les citoyens", maxPoints:10,
+    indicators:["استقبال المواطنين","معالجة الشكايات","الاستجابة للمطالب","التواصل الدوري مع الساكنة"] }
+];
+const RATING_LABELS = ["منعدم","ضعيف جداً","ضعيف","متوسط","جيد","ممتاز"];
+const RATING_COLORS = ["#95a5a6","#e74c3c","#e67e22","#f39c12","#2ecc71","#27ae60"];
+const SCALE = [
+  { min:85, max:100, label:"ممتاز",  color:"#27ae60", bg:"#eafaf1", description:"حصيلة ممتازة وإنجازات ذات أثر واضح على الساكنة" },
+  { min:70, max:84,  label:"جيد",    color:"#2ecc71", bg:"#f0fdf4", description:"حصيلة جيدة مع بعض الاختلالات القابلة للمعالجة" },
+  { min:50, max:69,  label:"متوسط",  color:"#f39c12", bg:"#fffbeb", description:"حصيلة متوسطة تحتاج إلى تحسينات جوهرية" },
+  { min:30, max:49,  label:"ضعيف",   color:"#e67e22", bg:"#fff7ed", description:"حصيلة ضعيفة مع قصور في عدة مجالات أساسية" },
+  { min:0,  max:29,  label:"فاشل",   color:"#e74c3c", bg:"#fef2f2", description:"فشل واضح في تحقيق الأهداف والالتزامات" }
+];
+const QUALITATIVE_QUESTIONS = [
+  { id:"q1", text:"ما أهم ثلاثة إنجازات حققها المجلس خلال الولاية؟", placeholder:"اذكر الإنجازات الملموسة مع ذكر التواريخ والتكلفة عند الإمكان..." },
+  { id:"q2", text:"ما أهم ثلاثة إخفاقات أو ملفات عالقة؟", placeholder:"اذكر المشاريع المتعثرة أو الملفات التي لم تعالج بالشكل المطلوب..." },
+  { id:"q3", text:"هل تغيرت جودة العيش في المدينة خلال الولاية؟ كيف؟", placeholder:"قيّم الأثر الفعلي على حياة الساكنة اليومية..." },
+  { id:"q4", text:"هل تم الحفاظ على المؤهلات البيئية والسياحية للمدينة؟", placeholder:"أشر إلى وضع البيئة والمجالات الطبيعية والسياحية..." },
+  { id:"q5", text:"ما الأولويات التي ينبغي أن يتضمنها البرنامج الجماعي المقبل؟", placeholder:"اقترح الأولويات المستعجلة للولاية القادمة..." }
+];
+
+// ── App ───────────────────────────────────────────────────────────────────────
+const state = { commune:{name:'',evaluator:'',periodStart:'',date:''}, ratings:{}, notes:{}, qualitative:{}, currentAxis:0 };
+let radarChart=null, barChart=null;
+
+function initApp() {
+  AXES.forEach((a,i) => { state.ratings[i]=new Array(a.indicators.length).fill(-1); state.notes[i]=''; });
+  QUALITATIVE_QUESTIONS.forEach(q => { state.qualitative[q.id]=''; });
+  document.getElementById('eval-date').value = new Date().toISOString().split('T')[0];
+  renderProgressSteps();
+  renderQualitativeForm();
+}
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function startEvaluation() {
+  const ni = document.getElementById('commune-name');
+  if (!ni.value.trim()) { ni.classList.add('error'); ni.focus(); return; }
+  ni.classList.remove('error');
+  state.commune.name      = ni.value.trim();
+  state.commune.evaluator = document.getElementById('evaluator-name').value.trim();
+  state.commune.periodStart = document.getElementById('period-start').value;
+  state.commune.date      = document.getElementById('eval-date').value;
+  document.getElementById('header-score').style.display='flex';
+  document.getElementById('progress-container').style.display='block';
+  showScreen('evaluation');
+  renderAxis(0);
+}
+
+function prevAxis() { if(state.currentAxis>0) renderAxis(state.currentAxis-1); }
+function nextAxis() {
+  if(state.currentAxis<AXES.length-1) renderAxis(state.currentAxis+1);
+  else { syncQualitativeValues(); showScreen('qualitative'); }
+}
+function showResults() { syncQualitativeValues(); showScreen('results'); renderResults(); }
+
+function resetApp() {
+  if(!confirm('هل تريد بدء تقييم جديد؟ ستُفقد جميع البيانات الحالية.')) return;
+  AXES.forEach((a,i) => { state.ratings[i]=new Array(a.indicators.length).fill(-1); state.notes[i]=''; });
+  QUALITATIVE_QUESTIONS.forEach(q => { state.qualitative[q.id]=''; });
+  state.commune={name:'',evaluator:'',periodStart:'',date:''};
+  ['commune-name','evaluator-name'].forEach(id => { document.getElementById(id).value=''; });
+  document.getElementById('period-start').value='';
+  document.getElementById('eval-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('header-score').style.display='none';
+  document.getElementById('progress-container').style.display='none';
+  if(radarChart){radarChart.destroy();radarChart=null;}
+  if(barChart){barChart.destroy();barChart=null;}
+  showScreen('welcome');
+}
+
+function renderProgressSteps() {
+  document.getElementById('progress-steps').innerHTML =
+    AXES.map((a,i) => `<div class="progress-step" id="step-${i}" title="${a.title}" onclick="jumpToAxis(${i})">${i+1}</div>`).join('');
+}
+
+function updateProgressBar(idx) {
+  const fill=document.getElementById('progress-fill');
+  if(fill) fill.style.width=`${((idx+1)/AXES.length)*100}%`;
+  document.querySelectorAll('.progress-step').forEach((el,i) => {
+    el.classList.remove('active','completed');
+    if(i<idx) el.classList.add('completed');
+    if(i===idx) el.classList.add('active');
+  });
+}
+
+function jumpToAxis(idx) {
+  if(document.getElementById('screen-evaluation').classList.contains('active')) renderAxis(idx);
+}
+
+function renderAxis(idx) {
+  state.currentAxis=idx;
+  const axis=AXES[idx], ratings=state.ratings[idx];
+  document.getElementById('axis-form').innerHTML = `
+    <div class="axis-card" style="--axis-color:${axis.color}">
+      <div class="axis-header">
+        <div class="axis-meta">
+          <span class="axis-number">المحور ${idx+1} / ${AXES.length}</span>
+          <span class="axis-pts-badge">${axis.maxPoints} نقطة</span>
+        </div>
+        <div class="axis-icon">${axis.icon}</div>
+        <h2 class="axis-title">${axis.title}</h2>
+        <p class="axis-subtitle">${axis.titleFr}</p>
+      </div>
+      <div class="indicators-list">
+        ${axis.indicators.map((ind,i) => `
+          <div class="indicator-item" id="ind-${idx}-${i}">
+            <div class="ind-header">
+              <span class="ind-num">${i+1}</span>
+              <span class="ind-name">${ind}</span>
+              <span class="ind-badge ${ratings[i]>=0?'rated':''}" id="ind-badge-${idx}-${i}"
+                    style="${ratings[i]>=0?'background:'+RATING_COLORS[ratings[i]]:''}">${ratings[i]>=0?RATING_LABELS[ratings[i]]:'—'}</span>
+            </div>
+            <div class="rating-row">
+              ${[0,1,2,3,4,5].map(v=>`
+                <button class="rbtn ${ratings[i]===v?'sel':''}" style="--c:${RATING_COLORS[v]}"
+                        onclick="setRating(${idx},${i},${v})" title="${RATING_LABELS[v]}">
+                  <span class="rbtn-val">${v}</span><span class="rbtn-lbl">${RATING_LABELS[v]}</span>
+                </button>`).join('')}
+            </div>
+          </div>`).join('')}
+      </div>
+      <div class="axis-notes-wrap">
+        <label for="notes-${idx}">ملاحظات إضافية (اختياري)</label>
+        <textarea id="notes-${idx}" rows="3" placeholder="أضف ملاحظاتك..." onchange="state.notes[${idx}]=this.value">${state.notes[idx]}</textarea>
+      </div>
+      <div class="axis-score-bar">
+        <span>نقطة المحور:</span>
+        <strong id="axis-score-val">${calcAxisScore(idx).toFixed(1)}</strong>
+        <span>/ ${axis.maxPoints}</span>
+        <div class="axis-score-fill-wrap">
+          <div class="axis-score-fill" style="width:${(calcAxisScore(idx)/axis.maxPoints)*100}%;background:${axis.color}"></div>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('prev-btn').style.display=idx>0?'inline-flex':'none';
+  document.getElementById('next-btn').innerHTML=idx===AXES.length-1?'الأسئلة النوعية <span class="btn-arrow">←</span>':'التالي <span class="btn-arrow">←</span>';
+  updateProgressBar(idx);
+  updateSidebar();
+  updateTotalScore();
+}
+
+function setRating(axisIdx,indIdx,value) {
+  state.ratings[axisIdx][indIdx]=value;
+  document.querySelectorAll(`#ind-${axisIdx}-${indIdx} .rbtn`).forEach(btn => {
+    btn.classList.toggle('sel',+btn.querySelector('.rbtn-val').textContent===value);
+  });
+  const badge=document.getElementById(`ind-badge-${axisIdx}-${indIdx}`);
+  if(badge){ badge.textContent=RATING_LABELS[value]; badge.className='ind-badge rated'; badge.style.background=RATING_COLORS[value]; }
+  const av=document.getElementById('axis-score-val');
+  if(av){
+    const s=calcAxisScore(axisIdx);
+    av.textContent=s.toFixed(1);
+    const fill=av.closest('.axis-score-bar').querySelector('.axis-score-fill');
+    if(fill) fill.style.width=(s/AXES[axisIdx].maxPoints)*100+'%';
+  }
+  updateTotalScore(); updateSidebar();
+}
+
+function calcAxisScore(idx) {
+  const rated=state.ratings[idx].filter(r=>r>=0);
+  if(!rated.length) return 0;
+  return (rated.reduce((a,b)=>a+b,0)/(AXES[idx].indicators.length*5))*AXES[idx].maxPoints;
+}
+function calcTotal() { return AXES.reduce((t,_,i)=>t+calcAxisScore(i),0); }
+function getScaleInfo(score) { return SCALE.find(s=>score>=s.min&&score<=s.max)||SCALE[SCALE.length-1]; }
+
+function updateTotalScore() {
+  const total=calcTotal(), rounded=total.toFixed(1);
+  const ls=document.getElementById('live-score'); if(ls) ls.textContent=rounded;
+  const ss=document.getElementById('sidebar-score'); if(ss) ss.textContent=rounded;
+  const circle=document.getElementById('score-circle');
+  if(circle){ circle.style.strokeDashoffset=314.16*(1-total/100); circle.style.stroke=getScaleInfo(total).color; }
+}
+
+function updateSidebar() {
+  const c=document.getElementById('axes-mini-list'); if(!c) return;
+  c.innerHTML=AXES.map((axis,i)=>{
+    const s=calcAxisScore(i), done=state.ratings[i].every(r=>r>=0), partial=state.ratings[i].some(r=>r>=0);
+    return `<div class="mini-axis ${i===state.currentAxis?'current':''} ${done?'done':partial?'partial':''}" onclick="jumpToAxis(${i})">
+      <span class="mini-icon">${axis.icon}</span><span class="mini-title">${axis.title}</span><span class="mini-score">${s.toFixed(1)}/${axis.maxPoints}</span></div>`;
+  }).join('');
+}
+
+function renderQualitativeForm() {
+  document.getElementById('qualitative-form').innerHTML=
+    QUALITATIVE_QUESTIONS.map((q,i)=>`
+      <div class="q-item">
+        <label for="${q.id}"><span class="q-num">${i+1}</span>${q.text}</label>
+        <textarea id="${q.id}" rows="4" placeholder="${q.placeholder}" onchange="state.qualitative['${q.id}']=this.value"></textarea>
+      </div>`).join('');
+}
+
+function syncQualitativeValues() {
+  QUALITATIVE_QUESTIONS.forEach(q=>{ const el=document.getElementById(q.id); if(el) state.qualitative[q.id]=el.value; });
+}
+
+function renderResults() {
+  const total=calcTotal(), info=getScaleInfo(total);
+  const evalDate=state.commune.date?new Date(state.commune.date).toLocaleDateString('ar-MA',{year:'numeric',month:'long',day:'numeric'}):'';
+  document.getElementById('results-content').innerHTML=`
+    <div class="results-top">
+      <div class="results-commune">${state.commune.name}</div>
+      ${state.commune.evaluator?`<div class="results-evaluator">${state.commune.evaluator}</div>`:''}
+      ${evalDate?`<div class="results-date">تاريخ التقييم: ${evalDate}</div>`:''}
+    </div>
+    <div class="total-card" style="border-color:${info.color};background:${info.bg}">
+      <div class="total-left"><div class="total-num" style="color:${info.color}">${total.toFixed(1)}</div><div class="total-denom">/100</div></div>
+      <div class="total-right">
+        <div class="verdict-label" style="color:${info.color}">${info.label}</div>
+        <div class="verdict-desc">${info.description}</div>
+        <div class="verdict-range">النطاق: ${info.min} – ${info.max} نقطة</div>
+      </div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card"><h4>المخطط الشعاعي</h4><div class="chart-wrap"><canvas id="radar-chart"></canvas></div></div>
+      <div class="chart-card"><h4>النقاط حسب المحور</h4><div class="chart-wrap"><canvas id="bar-chart"></canvas></div></div>
+    </div>
+    <div class="breakdown-card">
+      <h4>تفصيل النتائج</h4>
+      <div class="bd-table">
+        <div class="bd-row bd-head"><span>المحور</span><span>النقطة</span><span>من</span><span>النسبة</span><span>التقدير</span></div>
+        ${AXES.map((axis,i)=>{
+          const s=calcAxisScore(i), pct=(s/axis.maxPoints)*100, si=getScaleInfo(pct);
+          return `<div class="bd-row">
+            <span class="bd-name">${axis.icon} ${axis.title}</span>
+            <span class="bd-score">${s.toFixed(1)}</span><span class="bd-max">${axis.maxPoints}</span>
+            <span class="bd-pct"><div class="pct-track"><div class="pct-bar" style="width:${pct}%;background:${axis.color}"></div></div>${Math.round(pct)}%</span>
+            <span class="bd-verdict" style="color:${si.color}">${si.label}</span></div>`;
+        }).join('')}
+        <div class="bd-row bd-total"><span>المجموع</span><span>${total.toFixed(1)}</span><span>100</span><span>${Math.round(total)}%</span><span style="color:${info.color}">${info.label}</span></div>
+      </div>
+    </div>
+    <div class="scale-ref">
+      <h4>سلم قراءة النتائج</h4>
+      <div class="scale-items">
+        ${SCALE.map(s=>`<div class="scale-item ${total>=s.min&&total<=s.max?'active':''}" style="border-color:${s.color};${total>=s.min&&total<=s.max?'background:'+s.bg:''}">
+          <div class="scale-badge" style="background:${s.color}">${s.min}–${s.max}</div>
+          <strong style="color:${s.color}">${s.label}</strong><p>${s.description}</p></div>`).join('')}
+      </div>
+    </div>
+    ${QUALITATIVE_QUESTIONS.some(q=>state.qualitative[q.id])?`
+    <div class="qualitative-results"><h4>الأجوبة النوعية</h4>
+      ${QUALITATIVE_QUESTIONS.map(q=>state.qualitative[q.id]?`
+        <div class="qa-item"><div class="qa-q">${q.text}</div><div class="qa-a">${state.qualitative[q.id].replace(/\n/g,'<br>')}</div></div>`:'').join('')}
+    </div>`:''}`;
+  setTimeout(()=>{ renderRadarChart(); renderBarChart(); },80);
+}
+
+function renderRadarChart() {
+  const ctx=document.getElementById('radar-chart'); if(!ctx) return;
+  if(radarChart) radarChart.destroy();
+  radarChart=new Chart(ctx,{
+    type:'radar',
+    data:{ labels:AXES.map(a=>{ const w=a.title.split(' '),l=[]; let ln='';
+      w.forEach(x=>{ if((ln+' '+x).trim().length>10){l.push(ln.trim());ln=x;}else ln=(ln+' '+x).trim(); }); if(ln) l.push(ln); return l; }),
+      datasets:[{ label:state.commune.name, data:AXES.map((_,i)=>+((calcAxisScore(i)/AXES[i].maxPoints)*100).toFixed(1)),
+        fill:true, backgroundColor:'rgba(193,18,28,0.15)', borderColor:'#C1121C',
+        pointBackgroundColor:'#C1121C', pointBorderColor:'#fff', pointRadius:5, borderWidth:2 }] },
+    options:{ responsive:true, maintainAspectRatio:true,
+      scales:{ r:{ min:0, max:100, ticks:{stepSize:25,font:{family:'Cairo',size:10},backdropColor:'transparent'},
+        pointLabels:{font:{family:'Cairo',size:11},color:'#2c3e50'}, grid:{color:'#e1e8ed'}, angleLines:{color:'#e1e8ed'} } },
+      plugins:{ legend:{display:false} } }
+  });
+}
+
+function renderBarChart() {
+  const ctx=document.getElementById('bar-chart'); if(!ctx) return;
+  if(barChart) barChart.destroy();
+  barChart=new Chart(ctx,{
+    type:'bar',
+    data:{ labels:AXES.map((a,i)=>`${i+1}. ${a.title.length>12?a.title.slice(0,12)+'…':a.title}`),
+      datasets:[
+        { label:'النقطة المحصل عليها', data:AXES.map((_,i)=>+calcAxisScore(i).toFixed(1)),
+          backgroundColor:AXES.map(a=>a.color+'cc'), borderColor:AXES.map(a=>a.color), borderWidth:2, borderRadius:6 },
+        { label:'النقطة القصوى', data:AXES.map(a=>a.maxPoints),
+          backgroundColor:'#e1e8ed99', borderColor:'#bdc3c7', borderWidth:1, borderRadius:6 }
+      ] },
+    options:{ responsive:true, maintainAspectRatio:true, indexAxis:'y',
+      scales:{ x:{max:15,ticks:{font:{family:'Cairo',size:10}},grid:{color:'#f0f0f0'}},
+               y:{ticks:{font:{family:'Cairo',size:10}}} },
+      plugins:{ legend:{labels:{font:{family:'Cairo',size:11}}} } }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', initApp);
+</script>
+</body>
+</html>
