@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>شبكة التقييم المواطن — الجماعات الترابية المغربية</title>
+  <meta name="description" content="أداة تقييم مواطني تفاعلية لقياس أداء مجالس الجماعات الترابية بالمغرب">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ── Header ── -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-flag">🇲🇦</span>
+        <div class="logo-text">
+          <h1>شبكة التقييم المواطن</h1>
+          <p>الجماعات الترابية بالمغرب</p>
+        </div>
+      </div>
+      <div id="header-score" class="header-score">
+        <span class="score-lbl">النقطة الحالية</span>
+        <span class="score-num" id="live-score">0</span>
+        <span class="score-max">/100</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Progress ── -->
+  <div id="progress-container" class="progress-container">
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+    <div class="progress-steps" id="progress-steps"></div>
+  </div>
+
+  <!-- ══ Screens ══ -->
+  <main class="main-content">
+
+    <!-- ── Screen: Welcome ── -->
+    <div id="screen-welcome" class="screen active">
+      <div class="container">
+
+        <div class="hero">
+          <div class="hero-badge">المملكة المغربية — التقييم المواطني</div>
+          <h2>شبكة التقييم المواطن<br>لعمل الجماعات الترابية</h2>
+          <p>أداة ديمقراطية لتقييم أداء المجالس الجماعية وقياس مدى تحقيقها لالتزاماتها تجاه الساكنة، وفق مبادئ الشفافية وربط المسؤولية بالمحاسبة</p>
+          <div class="hero-stats">
+            <div class="stat">
+              <span class="stat-num">9</span>
+              <span class="stat-lbl">محاور تقييم</span>
+            </div>
+            <div class="stat">
+              <span class="stat-num">100</span>
+              <span class="stat-lbl">نقطة إجمالية</span>
+            </div>
+            <div class="stat">
+              <span class="stat-num">37</span>
+              <span class="stat-lbl">مؤشراً</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="setup-card">
+          <h3>معلومات الجماعة الترابية</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="commune-name">اسم الجماعة الترابية *</label>
+              <input type="text" id="commune-name" placeholder="مثال: جماعة الوليدية"
+                     onkeydown="if(event.key==='Enter') startEvaluation()">
+            </div>
+            <div class="form-group">
+              <label for="evaluator-name">الجهة المقيِّمة</label>
+              <input type="text" id="evaluator-name" placeholder="اسم الجمعية أو الهيئة أو الفرد">
+            </div>
+            <div class="form-group">
+              <label for="period-start">سنة بداية الولاية</label>
+              <input type="month" id="period-start" placeholder="2021-09">
+            </div>
+            <div class="form-group">
+              <label for="eval-date">تاريخ التقييم</label>
+              <input type="date" id="eval-date">
+            </div>
+          </div>
+          <button class="btn-primary lg" onclick="startEvaluation()">
+            بدء التقييم
+            <span class="btn-arrow">←</span>
+          </button>
+        </div>
+
+        <div class="how-it-works">
+          <h3>كيف يعمل التطبيق؟</h3>
+          <div class="steps-grid">
+            <div class="step">
+              <div class="step-icon">📝</div>
+              <h4>أدخل البيانات</h4>
+              <p>اسم الجماعة والجهة المقيِّمة وفترة التقييم</p>
+            </div>
+            <div class="step">
+              <div class="step-icon">⭐</div>
+              <h4>قيّم المؤشرات</h4>
+              <p>37 مؤشراً موزعاً على 9 محاور، من 0 إلى 5 لكل مؤشر</p>
+            </div>
+            <div class="step">
+              <div class="step-icon">📊</div>
+              <h4>اطلع على النتائج</h4>
+              <p>تحليل بياني تفاعلي وتقدير شامل فوري</p>
+            </div>
+            <div class="step">
+              <div class="step-icon">📄</div>
+              <h4>أصدر التقرير</h4>
+              <p>تقرير مواطن قابل للطباعة والنشر والمشاركة</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Screen: Evaluation ── -->
+    <div id="screen-evaluation" class="screen">
+      <div class="container">
+        <div class="eval-layout">
+
+          <!-- Main form -->
+          <div>
+            <div id="axis-form"></div>
+            <div class="eval-nav">
+              <button id="prev-btn" class="btn-secondary" onclick="prevAxis()" style="display:none">
+                <span class="btn-arrow">→</span> السابق
+              </button>
+              <button id="next-btn" class="btn-primary" onclick="nextAxis()">
+                التالي <span class="btn-arrow">←</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Sidebar -->
+          <div>
+            <div class="sidebar-score-card">
+              <h4>النقطة الإجمالية</h4>
+              <div class="score-circle-wrap">
+                <svg viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="50" fill="none" stroke="#e1e8ed" stroke-width="10"/>
+                  <circle cx="60" cy="60" r="50" fill="none" stroke="#C1121C" stroke-width="10"
+                          stroke-dasharray="314.16" stroke-dashoffset="314.16"
+                          id="score-circle" stroke-linecap="round"
+                          transform="rotate(-90 60 60)" style="transition:stroke-dashoffset .4s ease, stroke .3s ease"/>
+                </svg>
+                <div class="score-circle-text">
+                  <span class="big" id="sidebar-score">0</span>
+                  <span class="sm">/100</span>
+                </div>
+              </div>
+            </div>
+            <div class="axes-sidebar">
+              <h4>تقدم المحاور</h4>
+              <div id="axes-mini-list"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Screen: Qualitative ── -->
+    <div id="screen-qualitative" class="screen">
+      <div class="container">
+        <div class="qualitative-wrap">
+          <div class="screen-hero">
+            <div class="shero-icon">💬</div>
+            <h2>أسئلة نوعية</h2>
+            <p>أجب على الأسئلة التالية بناءً على معطيات موضوعية وملموسة (اختياري)</p>
+          </div>
+          <div id="qualitative-form"></div>
+          <div class="qual-nav">
+            <button class="btn-secondary"
+                    onclick="showScreen('evaluation'); renderAxis(state.currentAxis)">
+              <span class="btn-arrow">→</span> العودة
+            </button>
+            <button class="btn-primary" onclick="showResults()">
+              عرض النتائج <span class="btn-arrow">←</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Screen: Results ── -->
+    <div id="screen-results" class="screen">
+      <div class="container">
+        <div id="results-content"></div>
+        <div class="results-actions">
+          <button class="btn-primary" onclick="window.print()">🖨️ طباعة التقرير</button>
+          <button class="btn-outline" onclick="resetApp()">🔄 تقييم جديد</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── Footer ── -->
+  <footer class="app-footer">
+    <p>شبكة التقييم المواطن للجماعات الترابية المغربية — أداة مفتوحة للمجتمع المدني والهيئات الاستشارية</p>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
