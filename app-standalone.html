@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -245,6 +246,52 @@ a { color:var(--primary); text-decoration:none; }
   .progress-steps { padding:8px 12px; }
   .progress-step { width:26px; height:26px; font-size:.7rem; }
 }
+/* DB button */
+.db-btn { display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.2); border-radius:50px; padding:6px 14px; color:#fff; font-family:var(--font); font-size:.8rem; cursor:pointer; transition:var(--t); }
+.db-btn:hover { background:rgba(255,255,255,.2); }
+.db-dot { width:8px; height:8px; border-radius:50%; background:#95a5a6; flex-shrink:0; transition:background .3s; }
+.db-dot.connected { background:#27ae60; }
+.header-actions { display:flex; align-items:center; gap:8px; }
+
+/* Toast */
+.toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(100px); background:var(--dark); color:#fff; padding:12px 28px; border-radius:50px; font-size:.9rem; font-weight:600; z-index:9999; transition:transform .35s ease; pointer-events:none; white-space:nowrap; }
+.toast.show { transform:translateX(-50%) translateY(0); }
+.toast.success { background:#27ae60; }
+.toast.error { background:#e74c3c; }
+
+/* Modal */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:1000; display:none; align-items:center; justify-content:center; padding:20px; }
+.modal-overlay.open { display:flex; }
+.modal { background:#fff; border-radius:var(--r-lg); padding:36px; max-width:540px; width:100%; box-shadow:var(--shadow-l); }
+.modal h3 { font-size:1.2rem; font-weight:700; color:var(--dark); margin-bottom:8px; }
+.modal > p { font-size:.88rem; color:var(--muted); margin-bottom:20px; }
+.modal-hint { background:#f8f9fa; border:1px solid var(--border); border-radius:var(--r); padding:16px; margin-bottom:20px; font-size:.8rem; color:var(--text); line-height:1.8; }
+.modal-hint code { background:#e9ecef; padding:2px 6px; border-radius:4px; font-family:monospace; font-size:.75rem; direction:ltr; display:inline-block; word-break:break-all; }
+.modal-fields { display:flex; flex-direction:column; gap:14px; margin-bottom:24px; }
+.modal-field label { display:block; font-size:.85rem; font-weight:600; color:var(--text); margin-bottom:5px; }
+.modal-field input { width:100%; padding:10px 14px; border:2px solid var(--border); border-radius:var(--r); font-size:.88rem; font-family:monospace; direction:ltr; }
+.modal-field input:focus { outline:none; border-color:var(--primary); }
+.modal-actions { display:flex; gap:12px; justify-content:flex-end; }
+
+/* History screen */
+.history-wrap { max-width:900px; margin:0 auto; }
+.hist-empty { text-align:center; padding:60px 20px; color:var(--muted); }
+.hist-empty .hist-icon { font-size:3rem; margin-bottom:12px; }
+.hist-table { background:var(--card); border-radius:var(--r); box-shadow:var(--shadow-s); overflow:hidden; border:1px solid var(--border); margin-bottom:24px; }
+.hist-row { display:grid; grid-template-columns:1.6fr .9fr .6fr .7fr auto; align-items:center; padding:14px 20px; gap:12px; border-bottom:1px solid var(--border); font-size:.87rem; }
+.hist-row:last-child { border-bottom:none; }
+.hist-head { background:var(--bg); font-weight:700; color:var(--muted); font-size:.78rem; }
+.hist-commune { font-weight:700; color:var(--dark); }
+.hist-score { font-weight:900; font-size:1rem; }
+.hist-actions { display:flex; gap:8px; }
+.hist-btn { padding:6px 14px; border-radius:8px; font-size:.78rem; font-weight:600; cursor:pointer; border:none; font-family:var(--font); }
+.hist-btn.load { background:var(--primary); color:#fff; }
+.hist-btn.del { background:var(--bg); color:var(--muted); border:1px solid var(--border); }
+.hist-btn:hover { opacity:.8; }
+@media(max-width:640px) {
+  .hist-row { grid-template-columns:1fr .5fr auto; }
+  .hist-row span:nth-child(2),.hist-row span:nth-child(4) { display:none; }
+}
   </style>
 </head>
 <body>
@@ -258,10 +305,14 @@ a { color:var(--primary); text-decoration:none; }
         <p>الجماعات الترابية بالمغرب</p>
       </div>
     </div>
-    <div id="header-score" class="header-score">
-      <span class="score-lbl">النقطة الحالية</span>
-      <span class="score-num" id="live-score">0</span>
-      <span class="score-max">/100</span>
+    <div class="header-actions">
+      <button class="db-btn" onclick="loadHistory()" title="التقييمات المحفوظة">📋 السابقة</button>
+      <button class="db-btn" onclick="openDbModal()"><span class="db-dot" id="db-dot"></span><span id="db-lbl">قاعدة البيانات</span></button>
+      <div id="header-score" class="header-score">
+        <span class="score-lbl">النقطة الحالية</span>
+        <span class="score-num" id="live-score">0</span>
+        <span class="score-max">/100</span>
+      </div>
     </div>
   </div>
 </header>
@@ -380,8 +431,27 @@ a { color:var(--primary); text-decoration:none; }
     <div class="container">
       <div id="results-content"></div>
       <div class="results-actions">
+        <button id="save-btn" class="btn-primary" onclick="saveEvaluation()">💾 حفظ في قاعدة البيانات</button>
         <button class="btn-primary" onclick="window.print()">🖨️ طباعة التقرير</button>
         <button class="btn-outline" onclick="resetApp()">🔄 تقييم جديد</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- History -->
+  <div id="screen-history" class="screen">
+    <div class="container">
+      <div class="history-wrap">
+        <div class="screen-hero">
+          <div class="shero-icon">🗄️</div>
+          <h2>التقييمات المحفوظة</h2>
+          <p>سجل التقييمات المخزنة في قاعدة بيانات PostgreSQL</p>
+        </div>
+        <div id="history-content"></div>
+        <div style="text-align:center">
+          <button class="btn-secondary" onclick="showScreen('welcome')"><span class="btn-arrow">→</span> العودة للرئيسية</button>
+        </div>
       </div>
     </div>
   </div>
@@ -391,6 +461,35 @@ a { color:var(--primary); text-decoration:none; }
 <footer class="app-footer">
   <p>شبكة التقييم المواطن للجماعات الترابية المغربية — أداة مفتوحة للمجتمع المدني والهيئات الاستشارية</p>
 </footer>
+
+<!-- DB Config Modal -->
+<div id="db-modal" class="modal-overlay">
+  <div class="modal">
+    <h3>🗄️ إعداد قاعدة البيانات PostgreSQL</h3>
+    <p>أدخل بيانات مشروع Supabase للاتصال بقاعدة بيانات PostgreSQL مجانية</p>
+    <div class="modal-hint">
+      <strong>خطوات الإعداد (مجاني):</strong><br>
+      1. أنشئ حساباً على <strong>supabase.com</strong> ← New Project<br>
+      2. في لوحة التحكم ← <strong>SQL Editor</strong>، شغّل هذا الأمر:<br>
+      <code>CREATE TABLE evaluations (id uuid DEFAULT gen_random_uuid() PRIMARY KEY, created_at timestamptz DEFAULT now(), commune_name text, evaluator text, eval_date text, total_score numeric, verdict text, ratings jsonb, notes jsonb, qualitative jsonb);</code><br>
+      3. Settings ← API ← انسخ <strong>Project URL</strong> و <strong>anon public key</strong>
+    </div>
+    <div class="modal-fields">
+      <div class="modal-field">
+        <label>Project URL</label>
+        <input type="url" id="sb-url" placeholder="https://xxxxxxxxxxxx.supabase.co">
+      </div>
+      <div class="modal-field">
+        <label>Anon Key (Public)</label>
+        <input type="text" id="sb-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeDbModal()">إلغاء</button>
+      <button class="btn-primary" onclick="saveDbConfig()">حفظ والاتصال</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ── Data ─────────────────────────────────────────────────────────────────────
@@ -441,6 +540,7 @@ function initApp() {
   document.getElementById('eval-date').value = new Date().toISOString().split('T')[0];
   renderProgressSteps();
   renderQualitativeForm();
+  initSupabase();
 }
 
 function showScreen(name) {
@@ -482,6 +582,8 @@ function resetApp() {
   document.getElementById('progress-container').style.display='none';
   if(radarChart){radarChart.destroy();radarChart=null;}
   if(barChart){barChart.destroy();barChart=null;}
+  const sb=document.getElementById('save-btn');
+  if(sb){sb.disabled=false;sb.textContent='💾 حفظ في قاعدة البيانات';sb.style.background='';}
   showScreen('welcome');
 }
 
@@ -697,6 +799,155 @@ function renderBarChart() {
                y:{ticks:{font:{family:'Cairo',size:10}}} },
       plugins:{ legend:{labels:{font:{family:'Cairo',size:11}}} } }
   });
+}
+
+// ── Supabase / PostgreSQL ─────────────────────────────────────────────────────
+let supabaseClient = null;
+
+function initSupabase() {
+  const url = localStorage.getItem('sb_url');
+  const key = localStorage.getItem('sb_key');
+  if (url && key) {
+    try {
+      supabaseClient = window.supabase.createClient(url, key);
+      setDbStatus(true);
+    } catch(e) { supabaseClient = null; setDbStatus(false); }
+  }
+}
+
+function setDbStatus(ok) {
+  const dot = document.getElementById('db-dot');
+  const lbl = document.getElementById('db-lbl');
+  if (dot) dot.className = 'db-dot' + (ok ? ' connected' : '');
+  if (lbl) lbl.textContent = ok ? 'متصل' : 'قاعدة البيانات';
+}
+
+function openDbModal() {
+  document.getElementById('sb-url').value = localStorage.getItem('sb_url') || '';
+  document.getElementById('sb-key').value = localStorage.getItem('sb_key') || '';
+  document.getElementById('db-modal').classList.add('open');
+}
+function closeDbModal() { document.getElementById('db-modal').classList.remove('open'); }
+
+function saveDbConfig() {
+  const url = document.getElementById('sb-url').value.trim();
+  const key = document.getElementById('sb-key').value.trim();
+  if (!url || !key) { showToast('أدخل الرابط والمفتاح', 'error'); return; }
+  try {
+    supabaseClient = window.supabase.createClient(url, key);
+    localStorage.setItem('sb_url', url);
+    localStorage.setItem('sb_key', key);
+    setDbStatus(true);
+    closeDbModal();
+    showToast('تم الاتصال بقاعدة البيانات ✓', 'success');
+  } catch(e) {
+    showToast('خطأ: ' + e.message, 'error');
+  }
+}
+
+async function saveEvaluation() {
+  if (!supabaseClient) { openDbModal(); return; }
+  const btn = document.getElementById('save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ جارٍ الحفظ...'; }
+  try {
+    const { error } = await supabaseClient.from('evaluations').insert({
+      commune_name: state.commune.name,
+      evaluator:    state.commune.evaluator || null,
+      eval_date:    state.commune.date || new Date().toISOString().split('T')[0],
+      total_score:  +calcTotal().toFixed(2),
+      verdict:      getScaleInfo(calcTotal()).label,
+      ratings:      state.ratings,
+      notes:        state.notes,
+      qualitative:  state.qualitative
+    });
+    if (error) throw error;
+    if (btn) { btn.textContent = '✓ تم الحفظ'; btn.style.background = '#27ae60'; }
+    showToast('تم حفظ التقييم في PostgreSQL ✓', 'success');
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '💾 حفظ في قاعدة البيانات'; btn.style.background = ''; }
+    showToast('خطأ في الحفظ: ' + (e.message || e), 'error');
+  }
+}
+
+async function loadHistory() {
+  showScreen('history');
+  const c = document.getElementById('history-content');
+  if (!supabaseClient) {
+    c.innerHTML = `<div class="hist-empty"><div class="hist-icon">🔌</div><p>لم يتم الاتصال بقاعدة البيانات بعد</p><br><button class="btn-primary" onclick="openDbModal()">إعداد الاتصال</button></div>`;
+    return;
+  }
+  c.innerHTML = `<div class="hist-empty"><div class="hist-icon">⏳</div><p>جارٍ تحميل البيانات...</p></div>`;
+  try {
+    const { data, error } = await supabaseClient
+      .from('evaluations')
+      .select('id,created_at,commune_name,evaluator,eval_date,total_score,verdict')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    if (!data.length) {
+      c.innerHTML = `<div class="hist-empty"><div class="hist-icon">📭</div><p>لا توجد تقييمات محفوظة بعد</p></div>`;
+      return;
+    }
+    c.innerHTML = `<div class="hist-table">
+      <div class="hist-row hist-head"><span>الجماعة</span><span>التاريخ</span><span>النقطة</span><span>التقدير</span><span>إجراء</span></div>
+      ${data.map(r=>`<div class="hist-row" data-id="${r.id}">
+        <span class="hist-commune">${r.commune_name}</span>
+        <span>${r.eval_date||r.created_at?.split('T')[0]||'—'}</span>
+        <span class="hist-score">${r.total_score!=null?r.total_score.toFixed(1):'—'}</span>
+        <span>${r.verdict||'—'}</span>
+        <span class="hist-actions">
+          <button class="hist-btn load" onclick="loadEvaluation('${r.id}')">تحميل</button>
+          <button class="hist-btn del" onclick="deleteEvaluation('${r.id}',this)">حذف</button>
+        </span>
+      </div>`).join('')}
+    </div>`;
+  } catch(e) {
+    c.innerHTML = `<div class="hist-empty"><div class="hist-icon">❌</div><p>خطأ: ${e.message}</p></div>`;
+  }
+}
+
+async function loadEvaluation(id) {
+  if (!supabaseClient) return;
+  showToast('⏳ جارٍ التحميل...');
+  try {
+    const { data, error } = await supabaseClient.from('evaluations').select('*').eq('id',id).single();
+    if (error) throw error;
+    state.commune = { name:data.commune_name||'', evaluator:data.evaluator||'', periodStart:'', date:data.eval_date||'' };
+    state.ratings    = data.ratings    || {};
+    state.notes      = data.notes      || {};
+    state.qualitative= data.qualitative|| {};
+    document.getElementById('commune-name').value   = state.commune.name;
+    document.getElementById('evaluator-name').value = state.commune.evaluator;
+    document.getElementById('eval-date').value      = state.commune.date;
+    document.getElementById('header-score').style.display='flex';
+    document.getElementById('progress-container').style.display='block';
+    const sb=document.getElementById('save-btn');
+    if(sb){sb.disabled=false;sb.textContent='💾 حفظ في قاعدة البيانات';sb.style.background='';}
+    showScreen('results'); renderResults();
+    showToast('تم تحميل التقييم ✓', 'success');
+  } catch(e) { showToast('خطأ في التحميل: ' + e.message, 'error'); }
+}
+
+async function deleteEvaluation(id, btn) {
+  if (!confirm('هل تريد حذف هذا التقييم نهائياً؟')) return;
+  if (!supabaseClient) return;
+  try {
+    const { error } = await supabaseClient.from('evaluations').delete().eq('id',id);
+    if (error) throw error;
+    btn.closest('.hist-row').remove();
+    showToast('تم الحذف', 'success');
+  } catch(e) { showToast('خطأ: ' + e.message, 'error'); }
+}
+
+function showToast(msg, type='') {
+  let t = document.getElementById('app-toast');
+  if (!t) { t=document.createElement('div'); t.id='app-toast'; t.className='toast'; document.body.appendChild(t); }
+  t.textContent = msg;
+  t.className = 'toast' + (type ? ' '+type : '');
+  void t.offsetWidth;
+  t.classList.add('show');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(()=>t.classList.remove('show'), 3200);
 }
 
 document.addEventListener('DOMContentLoaded', initApp);
